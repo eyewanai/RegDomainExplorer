@@ -26,3 +26,4 @@ go.work.sum
 
 .idea
 icaan-domains/
+.DS_Store
