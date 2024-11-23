@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"time"
 )
 
 var (
@@ -61,13 +62,17 @@ func NewConf() (*Conf, error) {
 		return nil, err
 	}
 
+	outputFolder := os.Getenv("ICAAN_OUTPUT_FOLDER")
+	// Add unique folder name (date in this case)
+	outputFolder = fmt.Sprintf("%s/%s", outputFolder, time.Now().Format("2006-01-02"))
+
 	return &Conf{
 		Icaan: IcaanConf{
 			Username:            envValues["ICAAN_USERNAME"],
 			Password:            envValues["ICAAN_PASSWORD"],
 			AuthURL:             envValues["ICAAN_AUTH_URL"],
 			BaseURL:             envValues["ICAAN_BASE_URL"],
-			OutputFolder:        envValues["ICAAN_OUTPUT_FOLDER"],
+			OutputFolder:        outputFolder,
 			ConcurrentDownloads: concurrentDownloads,
 			DownloadRetries:     downloadRetries,
 		},
