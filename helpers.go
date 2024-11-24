@@ -1,6 +1,7 @@
 package rde
 
 import (
+	"compress/gzip"
 	"crypto/md5"
 	"fmt"
 	"io"
@@ -58,4 +59,47 @@ func GetPreviousDayPath(filePath string) string {
 
 	previousPath := filepath.Join(filepath.Dir(filePath), previousDateStr)
 	return previousPath
+}
+
+func SaveToFile(filename string, lines []string) error {
+	file, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to create file %s: %v", filename, err)
+	}
+	defer file.Close()
+
+	for _, line := range lines {
+		_, err := file.WriteString(line + "\n")
+		if err != nil {
+			return fmt.Errorf("failed to write to file %s: %v", filename, err)
+		}
+	}
+
+	return nil
+}
+
+func Unzip(gzFilePath, outputFilePath string) error {
+	gzFile, err := os.Open(gzFilePath)
+	if err != nil {
+		return err
+	}
+	defer gzFile.Close()
+
+	gzReader, err := gzip.NewReader(gzFile)
+	if err != nil {
+		return err
+	}
+	defer gzReader.Close()
+
+	out, err := os.Create(outputFilePath)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	_, err = io.Copy(out, gzReader)
+	return err
+}
+
+func CreateDir(dir string) error {
+	return os.MkdirAll(dir, 0755)
 }

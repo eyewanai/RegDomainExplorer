@@ -23,6 +23,7 @@ type IcaanConf struct {
 	AuthURL             string
 	BaseURL             string
 	OutputFolder        string
+	BaseOutputFolder    string
 	ConcurrentDownloads int
 	DownloadRetries     int
 }
@@ -63,6 +64,7 @@ func NewConf() (*Conf, error) {
 	}
 
 	outputFolder := os.Getenv("ICAAN_OUTPUT_FOLDER")
+	baseOutputFolder := outputFolder
 	// Add unique folder name (date in this case)
 	outputFolder = fmt.Sprintf("%s/%s", outputFolder, time.Now().Format("2006-01-02"))
 
@@ -73,6 +75,7 @@ func NewConf() (*Conf, error) {
 			AuthURL:             envValues["ICAAN_AUTH_URL"],
 			BaseURL:             envValues["ICAAN_BASE_URL"],
 			OutputFolder:        outputFolder,
+			BaseOutputFolder:    baseOutputFolder,
 			ConcurrentDownloads: concurrentDownloads,
 			DownloadRetries:     downloadRetries,
 		},
