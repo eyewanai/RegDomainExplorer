@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 )
 
 type Loader struct {
@@ -91,10 +92,7 @@ func (c *Comparator) Run() {
 
 	fileMap := MapFilesByName(prevFiles)
 
-	// TODO: remove
-	curFiles = curFiles[:30]
-
-	// TODO: try cancel goroutine
+	// curFiles = curFiles[:30]
 
 	wg := sync.WaitGroup{}
 	diffTmpChannel := make(chan []string, len(curFiles))
@@ -129,7 +127,10 @@ func (c *Comparator) Run() {
 		close(diffChannel)
 	}()
 
-	err = WriteChannelToFile(diffChannel, "test.txt")
+	now := time.Now()
+	filePath := fmt.Sprintf("%s/daily_registered_%d_%02d_%02d.txt", conf.Icaan.BaseOutputFolder, now.Year(), now.Month(), now.Day())
+
+	err = WriteChannelToFile(diffChannel, filePath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -144,6 +145,9 @@ func WriteChannelToFile(ch <-chan string, filePath string) error {
 	writer := bufio.NewWriter(file)
 
 	for line := range ch {
+		if line == "" {
+			continue
+		}
 		if _, err := writer.WriteString(line + "\n"); err != nil {
 			return fmt.Errorf("error writing to file: %v", err)
 		}

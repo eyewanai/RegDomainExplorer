@@ -3,16 +3,17 @@ package rde
 import (
 	"bytes"
 	"fmt"
-	"github.com/google/uuid"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 func runDiff(file1, file2 string) (string, error) {
-	cmd := exec.Command("diff", "--speed-large-files", "-u", file1, file2)
+	cmd := exec.Command("bash", "-c", fmt.Sprintf("diff --speed-large-files -u %s %s | grep '^+' | sed 's/^+//' | grep -v '^++'", file1, file2))
 
 	var out bytes.Buffer
 	var stderr bytes.Buffer
@@ -28,6 +29,19 @@ func runDiff(file1, file2 string) (string, error) {
 	}
 
 	return out.String(), nil
+}
+
+func RunAwk(input, output string) error {
+	cmd := exec.Command("bash", "-c", fmt.Sprintf("awk '{print $1}' %s | sort -u | awk '{sub(/\\.$/, \"\"); print}' > %s", input, output))
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("failed run awk: %v", err)
+	}
+	err = os.Remove(input)
+	if err != nil {
+		return fmt.Errorf("failed delete file after awk: %v", err)
+	}
+	return nil
 }
 
 func MapFilesByName(files []string) map[string]string {
@@ -54,74 +68,33 @@ func HandleFileDiff(curFile, prevFile, curFilename, tmpDir string) ([]string, er
 		return nil, fmt.Errorf("failed unzipping previous file (%s): %v", prevFile, err)
 	}
 
-	diff, err := Compare(outputCur, outputPrev)
+	outputCurClean := fmt.Sprintf("%s/cur_%s_clean.txt", tmpDir, uniqueID)
+	outputPrevClean := fmt.Sprintf("%s/prev_%s_clean.txt", tmpDir, uniqueID)
+
+	err := RunAwk(outputCur, outputCurClean)
+	if err != nil {
+		return nil, fmt.Errorf("failed run awk: %v", err)
+	}
+
+	err = RunAwk(outputPrev, outputPrevClean)
+	if err != nil {
+		return nil, fmt.Errorf("failed run awk: %v", err)
+	}
+
+	diff, err := runDiff(outputPrevClean, outputCurClean)
 	if err != nil {
 		return nil, fmt.Errorf("failed comparing files (%s and %s): %v", outputCur, outputPrev, err)
 	}
 
-	log.Printf("Found %d new domains for %s\n", len(diff), curFilename)
-
-	if err := os.Remove(outputCur); err != nil {
-		log.Printf("Error removing file (%s): %v\n", outputCur, err)
-	}
-	if err := os.Remove(outputPrev); err != nil {
-		log.Printf("Error removing file (%s): %v\n", outputPrev, err)
-	}
-	return diff, nil
-}
-
-// ProcessFileComparison - Probably we don't need compare hashes because 'diff' command do this for us
-func ProcessFileComparison(curFile, prevFile, curFilename, tmpDir string) {
-	curHash, err := GetFileHash(curFile)
-	if err != nil {
-		log.Printf("Error hashing current file (%s): %v\n", curFile, err)
-		return
-	}
-
-	prevHash, err := GetFileHash(prevFile)
-	if err != nil {
-		log.Printf("Error hashing previous file (%s): %v\n", prevFile, err)
-		return
-	}
-
-	if curHash != prevHash {
-		HandleFileDiff(curFile, prevFile, curFilename, tmpDir)
-	}
-}
-
-func Compare(file1, file2 string) ([]string, error) {
-	diff, err := runDiff(file1, file2)
-	if err != nil {
-		return nil, err
-	}
-
 	diffSlice := strings.Split(diff, "\n")
 
-	var domains []string
-	domainsUnique := make(map[string]struct{})
+	log.Printf("Found %d new domains for %s\n", len(diffSlice), curFilename)
 
-	for _, line := range diffSlice {
-		if line == "" || (!strings.HasPrefix(line, "-")) { //&& !strings.HasPrefix(line, ">")) {
-			continue
-		}
-
-		line = line[1:]
-
-		parts := strings.Fields(line)
-		if len(parts) > 1 {
-			domain := strings.TrimSuffix(parts[0], ".")
-			if strings.HasPrefix(domain, "_") || strings.Count(domain, ".") != 1 {
-				continue
-			}
-			if _, ok := domainsUnique[domain]; !ok {
-				domainsUnique[domain] = struct{}{}
-			}
-		}
+	if err := os.Remove(outputCurClean); err != nil {
+		log.Printf("Error removing file (%s): %v\n", outputCur, err)
 	}
-
-	for domain := range domainsUnique {
-		domains = append(domains, domain)
+	if err := os.Remove(outputPrevClean); err != nil {
+		log.Printf("Error removing file (%s): %v\n", outputPrev, err)
 	}
-
-	return domains, nil
+	return diffSlice, nil
 }
