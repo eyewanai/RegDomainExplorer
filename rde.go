@@ -159,3 +159,28 @@ func WriteChannelToFile(ch <-chan string, filePath string) error {
 
 	return nil
 }
+
+type Searcher struct {
+	Conf *Conf
+}
+
+func NewSeacher(conf *Conf) *Searcher {
+	return &Searcher{Conf: conf}
+}
+
+func (s *Searcher) Run() error {
+	now := time.Now()
+	filePath := fmt.Sprintf("%s/daily_registered_%d_%02d_%02d.txt", s.Conf.Icaan.BaseOutputFolder, now.Year(), now.Month(), now.Day())
+	domains, err := ReadTxt(filePath)
+	if err != nil {
+		return err
+	}
+
+	reg, err := UnmarshalRegex()
+	if err != nil {
+		return err
+	}
+
+	Match(domains, reg)
+	return nil
+}

@@ -1,6 +1,7 @@
 package rde
 
 import (
+	"bufio"
 	"compress/gzip"
 	"crypto/md5"
 	"fmt"
@@ -102,4 +103,40 @@ func Unzip(gzFilePath, outputFilePath string) error {
 
 func CreateDir(dir string) error {
 	return os.MkdirAll(dir, 0755)
+}
+
+func GetConfigPath(filename string) (string, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+
+	absPath := filepath.Join(wd, "config", filename)
+
+	if _, err := os.Stat(absPath); os.IsNotExist(err) {
+		return "", fmt.Errorf("config file does not exist: %s", absPath)
+	}
+
+	return absPath, nil
+}
+
+func ReadTxt(filename string) ([]string, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	var lines []string
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text()) // Append each line to the slice
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	return lines, nil
 }
