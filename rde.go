@@ -11,19 +11,29 @@ import (
 )
 
 type Loader struct {
-	Conf *Conf
+	Conf         *Conf
+	OutputFolder *string
 }
 
-func NewLoader(conf *Conf) *Loader {
+func NewLoader(conf *Conf, outputFolder *string) *Loader {
 	return &Loader{
-		Conf: conf,
+		Conf:         conf,
+		OutputFolder: outputFolder,
 	}
 }
 
 func (l *Loader) Run() error {
+	var outputFolder string
+
 	conf := l.Conf
 
-	if err := os.MkdirAll(conf.Icaan.OutputFolder, 0755); err != nil {
+	if l.OutputFolder == nil {
+		outputFolder = *l.OutputFolder
+	} else {
+		outputFolder = conf.Icaan.OutputFolder
+	}
+
+	if err := os.MkdirAll(outputFolder, 0755); err != nil {
 		log.Fatal(err)
 	}
 

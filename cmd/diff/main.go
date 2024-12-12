@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"rde"
+	"time"
 )
 
 func main() {
@@ -11,6 +12,10 @@ func main() {
 		log.Fatal("Error loading config:", err)
 	}
 
+	st := time.Now()
+
 	comparator := rde.NewComparator(conf)
 	comparator.Run()
+
+	log.Printf("Complete extracting daily registred domains for %d", time.Since(st))
 }
